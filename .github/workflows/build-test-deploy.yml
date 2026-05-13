@@ -1,0 +1,50 @@
+# Déclaration des stages dans l'ordre d'exécution
+stages:
+  - build
+  - test
+  - deploy
+
+# Variables globales disponibles dans tous les jobs
+variables:
+  NODE_ENV: production
+
+# --- STAGE BUILD ---
+build:
+  stage: build
+  image: node:18-alpine
+  script:
+    - echo "📦 Installation des dépendances..."
+    - npm ci
+    - echo "🔨 Compilation..."
+    - npm run build
+  artifacts:
+    paths:
+      - dist/ # Conserve le dossier dist/ pour les jobs suivants
+    expire_in: 1 hour # Supprimé après 1 heure
+
+# --- STAGE TEST ---
+# Ces 2 jobs s'exécutent EN PARALLÈLE
+test-unit:
+  stage: test
+  image: node:18-alpine
+  script:
+    - npm ci
+    - npm run test:unit
+
+test-lint:
+  stage: test
+  image: node:18-alpine
+  script:
+    - npm ci
+    - npm run lint
+
+# --- STAGE DEPLOY ---
+deploy:
+  stage: deploy
+  image: alpine:3.19
+  script:
+    - echo "🚀 Déploiement vers $DEPLOY_TARGET..."
+    - echo "Fichiers à déployer:" && ls dist/
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" # Seulement sur main
+      when: manual # Clic requis pour démarrer
